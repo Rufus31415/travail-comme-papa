@@ -55,4 +55,6 @@ Prérequis : SDK .NET 9 (ou plus récent).
 dotnet run --project TravailCommePapa
 ```
 
-La voix utilise la synthèse vocale française de Windows (« Microsoft Hortense »). Sans voix française, l'app fonctionne quand même, sans le son.
+La voix utilise les voix françaises « OneCore » de Windows (Julie en priorité, puis Hortense, puis Paul). L'ordre se change dans `PreferredVoices` de [Speaker.cs](TravailCommePapa/Speaker.cs). Toutes les phrases sont préparées en mémoire au démarrage, ce qui supprime la latence. Si ces voix sont absentes, l'app se replie sur l'ancienne voix SAPI, et sans aucune voix elle fonctionne quand même, en silence.
+
+Les phrases (« B comme Ballon », lues naturellement d'une traite) sont définies dans [SpeechScript.cs](TravailCommePapa/SpeechScript.cs).

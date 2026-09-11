@@ -3,38 +3,43 @@ namespace TravailCommePapa;
 /// <summary>
 /// Mots simples par lettre, tirés "en roulement" : chaque mot est dit une fois
 /// avant qu'un mot ne soit répété (sac mélangé), et jamais deux fois de suite.
+/// Règle : 2 syllabes bien distinctes (sauf prénoms imposés et X, sans alternative).
 /// </summary>
 internal sealed class Words
 {
     private static readonly Dictionary<char, string[]> All = new()
     {
-        ['A'] = ["Abricot", "Avion", "Arbre", "Ananas", "Âne", "Adèle", "Agathe"],
-        ['B'] = ["Ballon", "Bébé", "Banane", "Bateau", "Bisou", "Biberon", "Bain"],
-        ['C'] = ["Canard", "Cochon", "Camion", "Carotte", "Câlin", "Chat", "Céleste"],
-        ['D'] = ["Doudou", "Dodo", "Dinosaure", "Dauphin", "Dent", "Dragon"],
-        ['E'] = ["Éléphant", "Étoile", "Escargot", "Eau", "Écureuil"],
-        ['F'] = ["Fleur", "Fraise", "Fourmi", "Fusée", "Fromage", "Feu"],
-        ['G'] = ["Gâteau", "Girafe", "Glace", "Gorille", "Guitare"],
-        ['H'] = ["Hibou", "Hélicoptère", "Hérisson", "Herbe", "Hubert"],
-        ['I'] = ["Igloo", "Île", "Iguane", "Inès"],
-        ['J'] = ["Jus", "Jouet", "Jardin", "Jaune", "Jambe"],
-        ['K'] = ["Koala", "Kangourou", "Kiwi", "Kayak"],
-        ['L'] = ["Lapin", "Lion", "Lait", "Lune", "Loup", "Lit"],
-        ['M'] = ["Maman", "Mamie", "Marius", "Mouton", "Moto", "Maison", "Main"],
-        ['N'] = ["Nounours", "Nez", "Nuage", "Neige", "Nid"],
-        ['O'] = ["Oiseau", "Orange", "Ours", "Œuf", "Oreille"],
-        ['P'] = ["Papa", "Pépé", "Pomme", "Poisson", "Poule", "Pain", "Pied"],
-        ['Q'] = ["Quatre", "Queue", "Quille"],
-        ['R'] = ["Renard", "Robot", "Requin", "Rouge", "Roue", "Radis"],
-        ['S'] = ["Stella", "Soleil", "Souris", "Serpent", "Sable", "Sac", "Sucette"],
-        ['T'] = ["Tortue", "Tonton Gérémy", "Tonton Célestin", "Tata Pauline", "Train", "Tracteur", "Tomate", "Tigre"],
-        ['U'] = ["Un", "Ukulélé", "Usine"],
-        ['V'] = ["Vache", "Vélo", "Voiture", "Vert", "Ver de terre"],
-        ['W'] = ["Wagon", "Wapiti", "Wouf wouf"],
+        ['A'] = ["Avion", "Abeille", "Agneau", "Adèle", "Agathe"],
+        ['B'] = ["Ballon", "Bébé", "Bateau", "Bisou", "Banane", "Bonbon"],
+        ['C'] = ["Canard", "Cochon", "Camion", "Câlin", "Carotte", "Cadeau", "Céleste"],
+        ['D'] = ["Dodo", "Dauphin", "Dragon", "Dessin", "Doudou"],
+        ['E'] = ["Étoile", "Écharpe", "Échelle", "Élodie", "Éléphant", "Écureuil"],
+        ['F'] = ["Fourmi", "Fusée", "Fromage", "Facteur"],
+        ['G'] = ["Gâteau", "Girafe", "Guitare", "Gabriel", "Garage"],
+        ['H'] = ["Hibou", "Hubert"],
+        ['I'] = ["Igloo", "Italie", "Inès"],
+        ['J'] = ["Jardin", "Jambon", "Jouet"],
+        ['K'] = ["Kiwi", "Koala", "Kangourou"],
+        ['L'] = ["Lapin", "Lézard", "Lion"],
+        ['M'] = ["Mouton", "Moto", "Maison", "Maman", "Mamie", "Marius"],
+        ['N'] = ["Nuage", "Navet", "Nager"],
+        ['O'] = ["Oiseau", "Orange", "Oreille"],
+        ['P'] = ["Poisson", "Panda", "Papa", "Pépé", "Pelleteuse"],
+        ['Q'] = ["Quatre", "Question"],
+        ['R'] = ["Renard", "Robot", "Requin", "Raisin"],
+        ['S'] = ["Soleil", "Souris", "Sapin", "Stella"],
+        ['T'] = ["Tracteur", "Tomate", "Tortue", "Tonton Gérémy", "Tonton Célestin", "Tata Pauline"],
+        ['U'] = ["Ustensile", "Utile", "Unique"],
+        ['V'] = ["Vélo", "Voiture", "Valise"],
+        ['W'] = ["Wagon"],
         ['X'] = ["Xylophone"],
-        ['Y'] = ["Yaourt", "Yoyo", "Yeux"],
-        ['Z'] = ["Zèbre", "Zoo", "Zéro"],
+        ['Y'] = ["Yaourt", "Les Yeux"],
+        ['Z'] = ["Zéro", "Zèbre", "Zizi"],
     };
+
+    /// <summary>Toutes les combinaisons lettre/mot (pour préparer les voix à l'avance).</summary>
+    public static IEnumerable<(char Letter, string Word)> Pairs =>
+        All.SelectMany(kv => kv.Value.Select(w => (kv.Key, w)));
 
     private readonly Random _rng = new();
     private readonly Dictionary<char, Queue<string>> _bags = new();
