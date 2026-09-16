@@ -29,6 +29,8 @@ internal sealed partial class MainForm
         ("D", "Effacer le dessin"),
         ("T", "Effacer le texte"),
         ("S", "Enregistrer une image PNG"),
+        ("M", "Couper / rétablir le son"),
+        ("V", "Volume à 30 %"),
     ];
 
     private readonly Dictionary<(char, bool), GlyphShape> _shapes = new();

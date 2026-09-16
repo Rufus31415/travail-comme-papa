@@ -15,6 +15,9 @@ internal sealed partial class MainForm : Form
     /// <summary>Durée d'appui sur Alt avant l'apparition de la console parent.</summary>
     private const int AdminHoldMs = 1500;
 
+    /// <summary>Volume général appliqué par la touche V de la console parent.</summary>
+    private const float AdminVolumeLevel = 0.30f;
+
     private static readonly Color[] LetterPalette =
     [
         Color.FromArgb(239, 83, 80),   // rouge
@@ -335,6 +338,19 @@ internal sealed partial class MainForm : Form
             case Keys.S:
             case Keys.E:
                 _adminStatus = ExportPng();
+                break;
+            case Keys.M:
+                _adminStatus = SystemVolume.ToggleMute() switch
+                {
+                    true => "Son coupé ✔",
+                    false => "Son rétabli ✔",
+                    null => "Erreur : volume inaccessible",
+                };
+                break;
+            case Keys.V:
+                _adminStatus = SystemVolume.SetLevel(AdminVolumeLevel)
+                    ? $"Volume réglé à {AdminVolumeLevel * 100:0} % ✔"
+                    : "Erreur : volume inaccessible";
                 break;
         }
         Invalidate();

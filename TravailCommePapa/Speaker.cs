@@ -20,6 +20,12 @@ internal sealed class Speaker : IDisposable
     /// <summary>Débit de la voix (1 = normal, 0.5 = deux fois plus lent).</summary>
     private const double SpeakingRate = 0.8;
 
+    /// <summary>
+    /// Silence ajouté au début de chaque phrase. Sans lui, la carte son avale les premiers
+    /// centièmes de seconde et « Zède » devient « ède », « zéro » devient « éro ».
+    /// </summary>
+    private const int LeadSilenceMs = 250;
+
     private readonly WinSynthesizer? _synth;
     private readonly SapiSynthesizer? _sapi;
     private readonly Dictionary<string, Task<byte[]>> _cache = new();
@@ -174,7 +180,44 @@ internal sealed class Speaker : IDisposable
         await reader.LoadAsync(size);
         var bytes = new byte[size];
         reader.ReadBytes(bytes);
-        return bytes;
+        return PrependSilence(bytes, LeadSilenceMs);
+    }
+
+    /// <summary>Insère un silence au début d'un WAV PCM 16 bits. Renvoie le WAV inchangé si le format surprend.</summary>
+    private static byte[] PrependSilence(byte[] wav, int ms)
+    {
+        try
+        {
+            int pos = 12, byteRate = 0, blockAlign = 0;
+            while (pos + 8 <= wav.Length)
+            {
+                string id = Encoding.ASCII.GetString(wav, pos, 4);
+                int size = BitConverter.ToInt32(wav, pos + 4);
+                if (id == "fmt ")
+                {
+                    byteRate = BitConverter.ToInt32(wav, pos + 16);
+                    blockAlign = BitConverter.ToInt16(wav, pos + 20);
+                    if (BitConverter.ToInt16(wav, pos + 22) != 16) return wav; // silence != 0 octets
+                }
+                else if (id == "data" && byteRate > 0 && blockAlign > 0)
+                {
+                    int silence = ms * byteRate / 1000;
+                    silence -= silence % blockAlign; // rester aligné sur un échantillon entier
+                    if (silence <= 0) return wav;
+
+                    int dataStart = pos + 8;
+                    var padded = new byte[wav.Length + silence]; // les octets du silence restent à zéro
+                    System.Buffer.BlockCopy(wav, 0, padded, 0, dataStart);
+                    System.Buffer.BlockCopy(wav, dataStart, padded, dataStart + silence, wav.Length - dataStart);
+                    BitConverter.TryWriteBytes(padded.AsSpan(4), BitConverter.ToInt32(wav, 4) + silence);
+                    BitConverter.TryWriteBytes(padded.AsSpan(pos + 4), size + silence);
+                    return padded;
+                }
+                pos += 8 + size + (size & 1);
+            }
+        }
+        catch { }
+        return wav;
     }
 
     /// <summary>Durée d'un fichier WAV PCM, lue dans son en-tête.</summary>

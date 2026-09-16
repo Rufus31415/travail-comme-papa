@@ -75,6 +75,39 @@ internal static class NativeMethods
     [DllImport("kernel32.dll")]
     public static extern uint SetThreadExecutionState(uint esFlags);
 
+    // --- Bouton d'alimentation (plan de gestion de l'alimentation) ---
+    /// <summary>GUID_SYSTEM_BUTTON_SUBGROUP : boutons et capot.</summary>
+    public static readonly Guid GUID_SYSTEM_BUTTON_SUBGROUP = new("4f971e89-eebd-4455-a8de-9e59040e7347");
+    /// <summary>GUID_POWERBUTTON_ACTION : que faire quand on appuie sur le bouton d'alimentation.</summary>
+    public static readonly Guid GUID_POWERBUTTON_ACTION = new("7648efa3-dd9c-4e3e-b566-50f929386280");
+    /// <summary>Action « Ne rien faire ».</summary>
+    public const uint POWER_ACTION_NONE = 0;
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerGetActiveScheme(IntPtr userRootPowerKey, out IntPtr activePolicyGuid);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerSetActiveScheme(IntPtr userRootPowerKey, ref Guid schemeGuid);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadACValueIndex(IntPtr rootPowerKey, ref Guid schemeGuid,
+        ref Guid subGroupGuid, ref Guid settingGuid, out uint value);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadDCValueIndex(IntPtr rootPowerKey, ref Guid schemeGuid,
+        ref Guid subGroupGuid, ref Guid settingGuid, out uint value);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerWriteACValueIndex(IntPtr rootPowerKey, ref Guid schemeGuid,
+        ref Guid subGroupGuid, ref Guid settingGuid, uint value);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerWriteDCValueIndex(IntPtr rootPowerKey, ref Guid schemeGuid,
+        ref Guid subGroupGuid, ref Guid settingGuid, uint value);
+
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr LocalFree(IntPtr hMem);
+
     // --- Touches rémanentes / filtre / bascule (raccourcis d'accessibilité) ---
     public const uint SPI_GETSTICKYKEYS = 0x003A;
     public const uint SPI_SETSTICKYKEYS = 0x003B;
