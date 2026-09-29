@@ -31,6 +31,7 @@ internal sealed partial class MainForm
         ("S", "Enregistrer une image PNG"),
         ("M", "Couper / rétablir le son"),
         ("V", "Volume à 30 %"),
+        ("W", "Modifier les mots de chaque lettre"),
     ];
 
     private readonly Dictionary<(char, bool), GlyphShape> _shapes = new();
@@ -240,6 +241,7 @@ internal sealed partial class MainForm
             DrawParticles(g, now);
             DrawHint(g, now);
             if (_adminVisible) DrawAdmin(g);
+            if (_editor != null) DrawWordEditor(g, _editor);
         }
     }
 
@@ -545,7 +547,7 @@ internal sealed partial class MainForm
         using var brush = new SolidBrush(Color.FromArgb(110, 60, 60, 100));
         g.DrawString(hint, _hintFont, brush, x, y);
 
-        if (_altDown && !_adminVisible)
+        if (AdminPending)
         {
             float p = Math.Clamp((now - _altDownAt) / (float)AdminHoldMs, 0, 1);
             float r = size.Height * 0.4f;
@@ -611,11 +613,113 @@ internal sealed partial class MainForm
         }
     }
 
+    private void DrawWordEditor(Graphics g, WordEditor ed)
+    {
+        using (var veil = new SolidBrush(Color.FromArgb(200, 20, 20, 40)))
+            g.FillRectangle(veil, ClientRectangle);
+
+        const int MaxRows = 8;
+        float pad = _em * 0.4f;
+        float rowH = _adminFont.Height * 1.55f;
+        float titleH = _adminTitleFont.Height * 1.4f;
+        float stripH = _adminFont.Height * 1.6f;
+        float inputH = _adminFont.Height * 1.9f;
+        float lineH = _adminFont.Height * 1.3f;
+        float cw = Math.Min(ClientSize.Width * 0.92f, _em * 10.5f);
+        float ch = pad * 2 + titleH + stripH + MaxRows * rowH + pad * 0.6f + inputH + lineH * 2.4f + lineH * 2.4f + lineH * 1.4f;
+        var card = new RectangleF((ClientSize.Width - cw) / 2, (ClientSize.Height - ch) / 2, cw, ch);
+
+        using (var cp = RoundRect(card, _em * 0.25f))
+        using (var cb = new SolidBrush(Color.FromArgb(250, 250, 252)))
+            g.FillPath(cb, cp);
+
+        using var text = new SolidBrush(Color.FromArgb(40, 40, 60));
+        using var grey = new SolidBrush(Color.FromArgb(120, 120, 140));
+        using var accent = new SolidBrush(Color.FromArgb(60, 40, 110));
+        using var accentPen = new Pen(Color.FromArgb(160, 140, 210), 2);
+        using var soft = new SolidBrush(Color.FromArgb(236, 232, 248));
+        var middle = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        float x = card.X + pad, w = card.Width - 2 * pad, y = card.Y + pad;
+
+        // Titre + nombre de mots
+        g.DrawString("Mots de la lettre", _adminTitleFont, accent, x, y);
+        int count = ed.CurrentWords.Count;
+        string countText = count == 0 ? "aucun : mots par défaut" : count == 1 ? "1 mot" : count + " mots";
+        var cs = g.MeasureString(countText, _adminFont);
+        g.DrawString(countText, _adminFont, grey, x + w - cs.Width, y + (titleH - cs.Height) / 2);
+        y += titleH;
+
+        // Bandeau A-Z : lettre courante en violet, lettres sans mot en pâle
+        float cell = w / 26f;
+        for (int i = 0; i < 26; i++)
+        {
+            char letter = (char)('A' + i);
+            var r = new RectangleF(x + i * cell, y, cell, stripH);
+            bool current = letter == ed.Letter;
+            if (current)
+                using (var p = RoundRect(RectangleF.Inflate(r, -cell * 0.05f, 0), cell * 0.25f))
+                using (var b = new SolidBrush(Color.FromArgb(149, 97, 226)))
+                    g.FillPath(b, p);
+            var brush = current ? Brushes.White : ed.Words[letter].Count == 0 ? grey : text;
+            g.DrawString(letter.ToString(), _adminKeyFont, brush, r, middle);
+        }
+        y += stripH;
+
+        // Liste des mots (fenêtre glissante autour de la sélection)
+        var words = ed.CurrentWords;
+        int first = Math.Clamp(ed.Selected - MaxRows + 1, 0, Math.Max(0, words.Count - MaxRows));
+        for (int row = 0; row < MaxRows; row++)
+        {
+            var r = new RectangleF(x, y + row * rowH, w, rowH);
+            int idx = first + row;
+            if (idx >= words.Count) continue;
+            if (idx == ed.Selected)
+                using (var p = RoundRect(RectangleF.Inflate(r, 0, -rowH * 0.05f), rowH * 0.25f))
+                {
+                    g.FillPath(soft, p);
+                    g.DrawPath(accentPen, p);
+                }
+            var left = new StringFormat { LineAlignment = StringAlignment.Center };
+            g.DrawString(words[idx], _adminFont, text, new RectangleF(r.X + pad * 0.6f, r.Y, r.Width - pad, r.Height), left);
+        }
+        y += MaxRows * rowH + pad * 0.6f;
+
+        // Ligne de saisie
+        var box = new RectangleF(x, y, w, inputH);
+        using (var p = RoundRect(box, inputH * 0.25f))
+        {
+            g.FillPath(Brushes.White, p);
+            g.DrawPath(accentPen, p);
+        }
+        var inputFormat = new StringFormat { LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+        var inner = new RectangleF(box.X + pad * 0.6f, box.Y, box.Width - pad, box.Height);
+        if (ed.Input.Length == 0)
+            g.DrawString($"Nouveau mot pour {ed.Letter}…", _adminFont, grey, inner, inputFormat);
+        else
+            g.DrawString(ed.Input + "▏", _adminFont, text, inner, inputFormat);
+        y += inputH;
+
+        // Message
+        if (ed.Status != null)
+        {
+            using var sb = new SolidBrush(ed.StatusIsError ? Color.FromArgb(200, 40, 40) : Color.FromArgb(46, 125, 50));
+            g.DrawString(ed.Status, _adminFont, sb, new RectangleF(x, y + lineH * 0.15f, w, lineH * 2.2f));
+        }
+        y += lineH * 2.4f;
+
+        g.DrawString("← → lettre  •  ↑ ↓ mot  •  Entrée ajouter\nSuppr supprimer  •  F2 modifier  •  Échap enregistrer et fermer",
+            _adminFont, grey, new RectangleF(x, y, w, lineH * 2.4f));
+        y += lineH * 2.4f;
+
+        var pathFormat = new StringFormat { Trimming = StringTrimming.EllipsisPath, FormatFlags = StringFormatFlags.NoWrap };
+        g.DrawString("Fichier : " + AppConfig.ActivePath, _adminFont, grey, new RectangleF(x, y, w, lineH), pathFormat);
+    }
+
     // ------------------------------------------------------------------ Outils
 
     private bool IsAnimating(long now)
     {
-        if (_particles.Count > 0 || _bubbleGlyph != null || (_altDown && !_adminVisible)) return true;
+        if (_particles.Count > 0 || _bubbleGlyph != null || AdminPending) return true;
         foreach (var gl in _text.Glyphs)
         {
             if (now - gl.BornMs < 520) return true;

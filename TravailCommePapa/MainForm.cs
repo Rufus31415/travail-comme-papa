@@ -42,7 +42,7 @@ internal sealed partial class MainForm : Form
 
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly TextModel _text = new();
-    private readonly Words _words = new();
+    private Words _words;
     private readonly Speaker _speaker = new();
     private readonly HashSet<Keys> _held = new();
     private readonly List<BlockerForm> _blockers = new();
@@ -63,11 +63,15 @@ internal sealed partial class MainForm : Form
     private long _altDownAt;
     private bool _adminVisible;
     private string? _adminStatus;
+    private WordEditor? _editor;
 
     // Bulle "A comme Abricot"
     private Glyph? _bubbleGlyph;
     private string _bubbleWord = "";
     private long _bubbleStart = -1;
+
+    /// <summary>ALT est maintenu et la console n'est pas encore ouverte (le cercle de progression se remplit).</summary>
+    private bool AdminPending => _altDown && !_adminVisible && _editor == null;
 
     private long Now => _clock.ElapsedMilliseconds;
 
@@ -83,6 +87,7 @@ internal sealed partial class MainForm : Form
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                  ControlStyles.OptimizedDoubleBuffer | ControlStyles.Opaque, true);
 
+        _words = new Words(AppConfig.Load()?.WordsByLetter());
         _speaker.Finished += OnSpeechFinished;
         _animTimer.Tick += (_, _) => OnAnimationTick();
         _guardTimer.Tick += (_, _) => KeepLocked();
@@ -116,6 +121,8 @@ internal sealed partial class MainForm : Form
             _blockers.Add(b);
             b.Show();
         }
+
+        _speaker.Prewarm(_words.Pairs);
 
         _hook = new KeyboardHook();
         _hook.KeyEvent += OnHookKey;
@@ -223,6 +230,14 @@ internal sealed partial class MainForm : Form
             return;
         }
         bool repeat = !_held.Add(key);
+
+        if (_editor != null)
+        {
+            bool shift = _held.Contains(Keys.LShiftKey) || _held.Contains(Keys.RShiftKey) || _held.Contains(Keys.ShiftKey);
+            _editor.HandleKey(key, repeat, shift, IsKeyLocked(Keys.CapsLock));
+            Invalidate();
+            return;
+        }
 
         if (_adminVisible)
         {
@@ -347,12 +362,43 @@ internal sealed partial class MainForm : Form
                     null => "Erreur : volume inaccessible",
                 };
                 break;
+            case Keys.W:
+                OpenWordEditor();
+                break;
             case Keys.V:
                 _adminStatus = SystemVolume.SetLevel(AdminVolumeLevel)
                     ? $"Volume réglé à {AdminVolumeLevel * 100:0} % ✔"
                     : "Erreur : volume inaccessible";
                 break;
         }
+        Invalidate();
+    }
+
+    /// <summary>Ouvre l'éditeur de mots : il reste ouvert après avoir relâché ALT, jusqu'à Échap.</summary>
+    private void OpenWordEditor()
+    {
+        _editor = new WordEditor(Words.Effective(AppConfig.Load()?.WordsByLetter()));
+        _editor.CloseRequested += CloseWordEditor;
+        _adminVisible = false;
+        _adminStatus = null;
+    }
+
+    private void CloseWordEditor()
+    {
+        if (_editor == null) return;
+        if (!_editor.SaveFailed)
+        {
+            string? saved = AppConfig.FromWords(_editor.Words).Save();
+            if (saved == null)
+            {
+                _editor.ReportSaveFailure();
+                return;
+            }
+            _words = new Words(_editor.Words);
+            _speaker.Prewarm(_words.Pairs);
+        }
+        _editor = null;
+        _held.Clear();
         Invalidate();
     }
 
@@ -443,7 +489,7 @@ internal sealed partial class MainForm : Form
     private void OnAnimationTick()
     {
         long now = Now;
-        if (_altDown && !_adminVisible && now - _altDownAt >= AdminHoldMs)
+        if (AdminPending && now - _altDownAt >= AdminHoldMs)
         {
             _adminVisible = true;
             _held.Clear();

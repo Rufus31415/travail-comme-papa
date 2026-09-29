@@ -60,11 +60,7 @@ internal sealed class Speaker : IDisposable
             _synth = null;
         }
 
-        if (_synth != null)
-        {
-            _ = PrewarmAsync();
-            return;
-        }
+        if (_synth != null) return;
 
         try
         {
@@ -148,12 +144,18 @@ internal sealed class Speaker : IDisposable
 
     // ------------------------------------------------------------------ Synthèse + cache
 
-    private async Task PrewarmAsync()
+    /// <summary>Prépare en mémoire les phrases des chiffres et de ces mots (ceux déjà prêts sont ignorés).</summary>
+    public void Prewarm(IEnumerable<(char Letter, string Word)> pairs)
+    {
+        if (_synth != null) _ = PrewarmAsync(pairs.ToList());
+    }
+
+    private async Task PrewarmAsync(List<(char Letter, string Word)> pairs)
     {
         await Task.Delay(1000);
         foreach (var d in "0123456789")
             await TryGet(SpeechScript.Digit(d));
-        foreach (var (letter, word) in Words.Pairs)
+        foreach (var (letter, word) in pairs)
             await TryGet(SpeechScript.Letter(letter, word));
 
         async Task TryGet(string text)

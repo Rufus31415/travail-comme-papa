@@ -1,0 +1,50 @@
+name: Release
+
+# À chaque tag vX.Y.Z : compile TravailCommePapa.exe et le publie dans une release GitHub,
+# dont les notes sont les messages des commits depuis la release précédente.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tout l'historique et les tags, pour lister les commits depuis la release précédente
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Compiler
+        shell: bash
+        run: |
+          dotnet publish TravailCommePapa/TravailCommePapa.csproj \
+            -c Release -r win-x64 --self-contained false \
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+            -o publish
+
+      - name: Notes de version
+        shell: bash
+        run: |
+          previous=$(git describe --tags --abbrev=0 --match 'v*' "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          if [ -n "$previous" ]; then
+            range="$previous..${GITHUB_REF_NAME}"
+          else
+            range="${GITHUB_REF_NAME}"
+          fi
+          git log --no-merges --pretty=format:'- %s' "$range" > release-notes.md
+          echo "Notes ($range) :"; cat release-notes.md
+
+      - name: Publier la release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" publish/TravailCommePapa.exe \
+            --title "$GITHUB_REF_NAME" --notes-file release-notes.md
