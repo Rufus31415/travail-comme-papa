@@ -16,6 +16,8 @@
 
 ---
 
+> **Pas d'écrans avant 3 ans ?** Vrai, mais bon… difficile de voir son parent passer la journée devant cette magnifique source de lumière bleue sans avoir envie de tester un peu. Cette appli laisse les 2-3 ans écrire, dessiner et entendre « C comme Camion », sans jamais pouvoir quitter, ni supprimer le dossier « Photo de vacances ». À utiliser 10 minutes, pas 3 heures, hein !
+
 Application Windows plein écran pour les enfants de 2-3 ans. Elle leur fait découvrir le clavier et la souris d'un vrai PC, sans qu'ils puissent en sortir.
 
 ## Ce que fait l'enfant
