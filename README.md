@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/Rufus31415/travail-comme-papa/releases/latest/download/TravailCommePapa.exe"><b>⬇️&nbsp;&nbsp;Télécharger TravailCommePapa.exe</b></a>
   <br>
-  <sub>Dernière version · Windows 10/11 · nécessite le <a href="https://dotnet.microsoft.com/download/dotnet/9.0">runtime .NET 9 (Desktop)</a></sub>
+  <sub>Dernière version · Windows 10/11 · un seul fichier, rien à installer</sub>
 </p>
 
 ---
@@ -91,7 +91,7 @@ Le mode kiosque Windows (Accès attribué) demande un compte dédié et une reco
 
 ## Compiler / lancer
 
-Prérequis : SDK .NET 9 (ou plus récent).
+Prérequis : SDK .NET 9 (ou plus récent), pour compiler seulement. L'exe produit est autonome (runtime .NET inclus, environ 57 Mo) : rien à installer pour le lancer.
 
 ```powershell
 ./build.ps1                        # produit publish\TravailCommePapa.exe
